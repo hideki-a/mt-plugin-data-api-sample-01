@@ -1,0 +1,19 @@
+name: DataAPISample
+version: 1.0
+author_name: Hideki Abe
+author_link: https://www.anothersky.pw/
+applications:
+    data_api:
+        endpoints:
+            - id: search_entries_by_field
+              route: /fullcalendar/:blog_id/list
+              verb: GET
+              version: 1
+              handler: $DataAPISample::DataAPISample::EndPoint::Entry::search_entries_by_field
+              requires_login: 0
+            - id: filter_entries_by_field
+              route: /sites/:site_id/entries/filter_test
+              verb: GET
+              version: 1
+              handler: $DataAPISample::DataAPISample::EndPoint::Entry::filter_entries_by_field
+              requires_login: 0
