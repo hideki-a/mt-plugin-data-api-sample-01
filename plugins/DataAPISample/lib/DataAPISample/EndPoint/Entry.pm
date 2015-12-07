@@ -7,7 +7,7 @@ use CustomFields::Util qw( get_meta );
 use MT::DataAPI::Endpoint::Common;
 use MT::DataAPI::Endpoint::Entry;
 use MT::DataAPI::Resource;
-use MT::Util;
+use MT::Util qw( format_ts ts2iso );
 use DateTime;
 use boolean ();
 
@@ -64,12 +64,12 @@ sub search_entries_by_field {
                 id => $entry->id,
                 title => $entry->title,
                 allDay => $meta->{ 'is_allday' } ? boolean::true() : boolean::false(),
-                start => format_date($meta->{ 'dt_start' }, 'normal'),
+                start => format_ts('%Y-%m-%d', $meta->{ 'dt_start' }, $app->blog),
                 end => $dt_end,
            };
         } else {
             if ($meta->{ 'dt_end' }) {
-                $dt_end = MT::Util::ts2iso($app->blog, $meta->{ 'dt_end' }, 1);
+                $dt_end = ts2iso($app->blog, $meta->{ 'dt_end' }, 1);
             } else {
                 $dt_end = '';
             }
@@ -78,7 +78,7 @@ sub search_entries_by_field {
                 id => $entry->id,
                 title => $entry->title,
                 allDay => $meta->{ 'is_allday' } ? boolean::true() : boolean::false(),
-                start => MT::Util::ts2iso($app->blog, $meta->{ 'dt_start' }, 1),
+                start => ts2iso($app->blog, $meta->{ 'dt_start' }, 1),
                 end => $dt_end,
             };
         }
@@ -92,11 +92,7 @@ sub search_entries_by_field {
 sub format_date {
     my ( $data, $type ) = @_;
 
-    if ($type eq 'normal') {
-        # 形式の変換のみ
-        $data =~ s/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/$1-$2-$3/g;
-        return $data;
-    } elsif ($type eq 'add1day') {
+    if ($type eq 'add1day') {
         # 1日加算後、形式の変換を実行
         $data =~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/;
         my $dt = DateTime->new(
