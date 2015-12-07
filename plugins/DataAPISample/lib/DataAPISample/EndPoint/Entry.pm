@@ -7,6 +7,8 @@ use CustomFields::Util qw( get_meta );
 use MT::DataAPI::Endpoint::Common;
 use MT::DataAPI::Endpoint::Entry;
 use MT::DataAPI::Resource;
+use MT::Util;
+use DateTime;
 use boolean ();
 
 sub search_entries_by_field {
@@ -45,25 +47,70 @@ sub search_entries_by_field {
 
     foreach my $entry ( @entries ) {
         my $meta = &get_meta($entry);
-        my $data = {
-            id => $entry->id,
-            title => $entry->title,
-            start => format_datetime($meta->{ 'dt_start' }),
-            end => format_datetime($meta->{ 'dt_end' }),
-            allDay => format_datetime($meta->{ 'is_allday' }) ? boolean::true() : boolean::false()
-        };
+        my $data;
+        my $dt_end;
+
+        if ($meta->{ 'is_allday' }) {
+            # 終日スケジュール
+
+            if ($meta->{ 'dt_end' }) {
+                # 終了日設定有り…カレンダーの仕様上1日加算
+                $dt_end = format_date($meta->{ 'dt_end' }, 'add1day');
+            } else {
+                $dt_end = '';
+            }
+
+            $data = {
+                id => $entry->id,
+                title => $entry->title,
+                allDay => $meta->{ 'is_allday' } ? boolean::true() : boolean::false(),
+                start => format_date($meta->{ 'dt_start' }, 'normal'),
+                end => $dt_end,
+           };
+        } else {
+            if ($meta->{ 'dt_end' }) {
+                $dt_end = MT::Util::ts2iso($app->blog, $meta->{ 'dt_end' }, 1);
+            } else {
+                $dt_end = '';
+            }
+
+            $data = {
+                id => $entry->id,
+                title => $entry->title,
+                allDay => $meta->{ 'is_allday' } ? boolean::true() : boolean::false(),
+                start => MT::Util::ts2iso($app->blog, $meta->{ 'dt_start' }, 1),
+                end => $dt_end,
+            };
+        }
+
         push(@ret, $data);
     }
 
     return [ @ret ];
 }
 
-sub format_datetime {
-    my $data = shift;
+sub format_date {
+    my ( $data, $type ) = @_;
 
-    $data =~ s/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/$1-$2-$3 $4:$5:$6/g;
-
-    $data;
+    if ($type eq 'normal') {
+        # 形式の変換のみ
+        $data =~ s/(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/$1-$2-$3/g;
+        return $data;
+    } elsif ($type eq 'add1day') {
+        # 1日加算後、形式の変換を実行
+        $data =~ /(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/;
+        my $dt = DateTime->new(
+            time_zone => 'local',
+            year => "$1",
+            month => "$2",
+            day => "$3",
+            hour => 0,
+            minute => 0,
+            second => 0
+        );
+        $dt->add( days => 1 );
+        return $dt->strftime('%Y-%m-%d');
+    }
 }
 
 sub filter_entries_by_field {
